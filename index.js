@@ -141,12 +141,14 @@ WeatherStationPlatform.prototype = {
 						// Add current weather conditions
 						if (this.accessoriesList[i].currentConditionsService !== undefined && weather.report !== undefined && this.accessoriesList[i].stationIndex == stationIndex) {
 							try {
-								let service = this.accessoriesList[i].currentConditionsService;
+                let service = this.accessoriesList[i].currentConditionsService;
+                let humService = this.accessoriesList[i].humidity;
 								let data = weather.report;
 
 								for (let i = 0; i < this.apis[stationIndex].reportCharacteristics.length; i++) {
 									const name = this.apis[stationIndex].reportCharacteristics[i];
-									this.saveCharacteristic(service, name, data[name]);
+                  this.saveCharacteristic(service, name, data[name]);
+                  this.saveCharacteristic(humidity, name, data[name]);
 								}
 								debug("Saving history entry");
 								this.accessoriesList[i].historyService.addEntry({
@@ -221,7 +223,7 @@ function CurrentConditionsWeatherAccessory(platform, stationIndex) {
 	// Create temperature sensor or Eve Weather service that includes temperature characteristic
 
 	if (this.config.currentObservationsMode !== 'eve')
-		this.currentConditionsService = new Service.TemperatureSensor(this.name);
+		this.currentConditionsService = new Service.TemperatureSensor(this.name + " temperature");
 	else
 		this.currentConditionsService = new CustomService.EveWeatherService(this.name);
 
@@ -236,7 +238,18 @@ function CurrentConditionsWeatherAccessory(platform, stationIndex) {
 
 		// humidity not a custom but a general apple home kit characteristic
 		if (name === 'Humidity') {
-			this.currentConditionsService.addCharacteristic(Characteristic.CurrentRelativeHumidity);
+      if (this.config.currentObservationsMode !== 'eve'){
+        this.humidity = new Service.HumiditySensor(this.name + " humidity");
+        this.humidity.getCharacteristic(Characteristic.CurrentRelativeHumidity).setProps({ minValue: 0, maxValue: 100 });
+      } else
+        this.currentConditionsService.addCharacteristic(Characteristic.CurrentRelativeHumidity);
+/*
+      this.humiditySensor = this.getService(Service.HumiditySensor);
+      this.humiditySensor
+        .getCharacteristic(Characteristic.CurrentRelativeHumidity)
+        .setProps({ minValue: 0, maxValue: 100 })
+        .on("get", this.device.getHumidity.bind(this.device));
+*/
 		}
 		// temperature is already in the service
 		else if (name !== 'Temperature') {
